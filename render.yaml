@@ -1,11 +1,11 @@
-# Exported from Render on 2025-01-16T05:02:39Z
 services:
-- type: web
-  name: suryajithsurendran
-  runtime: python
-  repo: https://github.com/suryajithsurendran/suryajithsurendran
-  plan: free
-  region: oregon
-  buildCommand: pip install -r requirements.txt
-  startCommand: healthmaterppg.vercel.app
-version: "1"
+  - type: web
+    name: healthmate-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FIREBASE_CREDENTIALS
+        value: /opt/render/project/src/path/to/serviceAccountKey.json

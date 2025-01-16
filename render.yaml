@@ -8,4 +8,4 @@ services:
       - key: FLASK_ENV
         value: production
       - key: FIREBASE_CREDENTIALS
-        value: /opt/render/project/src/path/to/serviceAccountKey.json
+        value: <YOUR_FIREBASE_CREDENTIALS_JSON>

@@ -12,7 +12,10 @@ if not firebase_credentials:
     raise ValueError("No Firebase credentials found in environment variables.")
 
 # Parse the JSON string
-cred_dict = json.loads(firebase_credentials)
+try:
+    cred_dict = json.loads(firebase_credentials)
+except json.JSONDecodeError as e:
+    raise ValueError(f"Invalid JSON in FIREBASE_CREDENTIALS: {e}")
 
 # Initialize Firebase
 cred = credentials.Certificate(cred_dict)

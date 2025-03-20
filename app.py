@@ -1,53 +1,50 @@
-from flask import Flask, request, jsonify
-import firebase_admin
-from firebase_admin import credentials, auth
-import os
-import json
+from flask import Flask, render_template, Response
+import cv2
+import numpy as np
+from deepface import DeepFace
 
 app = Flask(__name__)
 
-# Load Firebase credentials from environment variable
-firebase_credentials = os.getenv('FIREBASE_CREDENTIALS')
-if not firebase_credentials:
-    raise ValueError("No Firebase credentials found in environment variables.")
+# Initialize camera
+camera = cv2.VideoCapture(0)
 
-# Parse the JSON string
-try:
-    cred_dict = json.loads(firebase_credentials)
-except json.JSONDecodeError as e:
-    raise ValueError(f"Invalid JSON in FIREBASE_CREDENTIALS: {e}")
+def generate_frames():
+    while True:
+        success, frame = camera.read()
+        if not success:
+            break
+        else:
+            # Vital Sign and Emotion Detection Logic
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Emotion Analysis
+            try:
+                result = DeepFace.analyze(frame, actions=['emotion'], enforce_detection=False)[0]
+                emotion = result['dominant_emotion']
+                cv2.putText(frame, f'Emotion: {emotion}', (10, 30), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            except:
+                cv2.putText(frame, 'Emotion: N/A', (10, 30), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-# Initialize Firebase
-cred = credentials.Certificate(cred_dict)
-firebase_admin.initialize_app(cred)
+            # Display the frame
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
-# Login API
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.json
-    email = data.get('email')
-    password = data.get('password')
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-    # Authenticate user using Firebase
-    try:
-        user = auth.get_user_by_email(email)
-        return jsonify({"message": "Login successful", "user_id": user.uid}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 401
+@app.route('/camera.html')
+def camera_feed():
+    return render_template('camera.html')
 
-# Signup API
-@app.route('/signup', methods=['POST'])
-def signup():
-    data = request.json
-    email = data.get('email')
-    password = data.get('password')
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), 
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
-    # Create user using Firebase
-    try:
-        user = auth.create_user(email=email, password=password)
-        return jsonify({"message": "User created", "user_id": user.uid}), 201
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
